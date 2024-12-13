@@ -1,0 +1,35 @@
+# Python specific ignores
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg
+*.egg-info/
+dist/
+build/
+*.whl
+
+# Virtual environment
+.env
+.venv/
+env/
+venv/
+.envrc
+python-version
+
+# IDE or editor specific files
+.vscode/
+.idea/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Local settings
+*.local
+*.lock
+
+# Logs
+*.log
+
+# Miscellaneous
+.DS_Store
+Thumbs.db

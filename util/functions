@@ -1,0 +1,46 @@
+#! /bin/bash
+# shellcheck disable=SC2207 # Arrays are a pain in bash 3
+
+echo "functions assume they are run from repo root"
+echo "run \"list\" for a list of helpers"
+
+INIT_LOCATION="$0"
+
+## External
+
+run() { # Feedback
+   uv run App.py
+}
+
+check_code() {
+    poetry run ruff . --fix
+    poetry run mypy --disallow-untyped-defs --exclude '/data/' .
+    poetry run vulture --exclude '/data/,paragraph_parser.py' ./util/feedback
+}
+
+test_code() {
+    echo "Excluding LLM tests"
+    poetry run pytest -m "not llm" -s
+}
+
+test_marked_code() {
+    poetry run pytest -m this -s --durations=0
+}
+
+
+test_llm_code() {
+    echo "Running LLM marked tests"
+    poetry run pytest -m llm -s
+}
+
+run_ast() {
+    run /Users/adam/sandbox/earthly/ast/ --ignore "*pycache*" --ignore "*.json" --ignore "*.txt" --ignore "go.sum" --ignore "go.mod" --ignore "Earthfile" --ignore "*.earth"  > prompt.txt
+}
+
+run_writing_tools() {
+    run /Users/adam/sandbox/writing-tools/util/feedback/feedback/ --ignore "*pycache*" --ignore "*.json" > write.txt
+}
+
+run_pulumi_docs() {
+    run /Users/adam/sandbox/docs/content/blog --ignore "*.json" --ignore "*.svg" --ignore "*.png" --ignore "*.mp4"  --ignore "*.jpg"  --ignore "*.gif"  --ignore "*.webp" --ignore "*.pdf" --ignore "*.jpeg" --ignore "*.mp3"  > blog.txt 
+}

@@ -1,0 +1,4 @@
+[services]
+github = "https://www.githubstatus.com/api/v2/status.json"
+aws = "https://status.aws.amazon.com/"
+openai = "https://status.openai.com/api/v2/summary.json"

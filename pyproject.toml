@@ -1,0 +1,26 @@
+[project]
+name = "github-status-checker"
+version = "0.1.0"
+description = "A simple Flask app to check and display GitHub's status using TailwindCSS."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "flask>=2.0",
+    "requests>=2.26",
+    "hypercorn>=0.14",
+    "flask-rq2>=18.0",
+    "schedule>=1.2",
+    "redis>=5.0",
+    "toml>=0.10",
+    "scapy>=2.5",
+    "setuptools"
+]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "--cov=app --cov-report=term-missing"
+testpaths = ["tests"]
