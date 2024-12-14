@@ -11,3 +11,7 @@ INIT_LOCATION="$0"
 run() { # Feedback
    sudo uv run App.py
 }
+
+docker() {
+    uv run python ./scripts/main.py
+}
