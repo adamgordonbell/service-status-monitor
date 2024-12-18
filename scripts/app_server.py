@@ -140,4 +140,4 @@ if __name__ == "__main__":
     else:
         app.logger.info("Packet sniffing disabled")
     
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0', port=3000)

@@ -8,39 +8,47 @@ INIT_LOCATION="$0"
 
 ## External
 
-run() { # Feedback
-   sudo uv run scripts/app_server.py
+,run_app_server() { # Feedback
+   sudo FLASK_RUN_PORT=3000 uv run scripts/app_server.py
 }
 
-run_no_sniff() { # Run without packet sniffing (no sudo required)
-   uv run python scripts/app_server.py --no-sniff
+,run_no_sniff() { # Run without packet sniffing (no sudo required)
+   FLASK_RUN_PORT=3000 uv run python scripts/app_server.py --no-sniff
 }
 
-docker() {
-    uv run python ./scripts/container.py
-}
+# ,run_docker() {
+#     uv run python ./scripts/container.py
+# }
 
-cli() { # Show service status dashboard in terminal
+,run_cli() { # Show service status dashboard in terminal
     uv run python scripts/service_status_cli.py
 }
 
-test() {
+,run_tests() {
     uv run python -m pytest tests/
 }
 
-kill_port() {
-    lsof -ti:5000 | xargs kill -9 2>/dev/null || echo "No process running on port 5000"
+,kill_port() {
+    lsof -ti:3000 | xargs kill -9 2>/dev/null || echo "No process running on port 3000"
 }
 
-pulumi_up() { # Deploy infrastructure using Pulumi
+,check_port() { # Check what's running on port 3000
+    lsof -i :3000
+}
+
+,pulumi_up() { # Deploy infrastructure using Pulumi
     cd infra && uv run pulumi up && cd ..
 }
 
-check_api() { # Check the API status endpoint
+,run_check_api() { # Check the API status endpoint
     API_URL=$(cd infra && uv run pulumi stack output api_url)
     if [ -n "$API_URL" ]; then
         curl "${API_URL}/default/status"
     else
         echo "Error: Could not get API URL from Pulumi outputs"
     fi
+}
+
+,run_docker() { # Run the Flask app in Docker
+    docker run -d -p 3000:3000 app-server
 }

@@ -20,6 +20,9 @@ dependencies = [
     "rich>=13.9.4",
 ]
 
+[tool.setuptools]
+packages = ["scripts"]
+
 [build-system]
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
