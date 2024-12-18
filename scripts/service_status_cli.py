@@ -11,12 +11,21 @@ from rich import box
 import time
 from datetime import datetime
 import sys
+from typing import Dict, Any, Optional, TypedDict
+
+class ServiceStatus(TypedDict):
+    status: str
+    description: str
+    code: Optional[int]
+
+class ServiceDict(TypedDict):
+    services: Dict[str, str]
 
 console = Console()
 
-def load_urls_from_toml(file_path):
+def load_urls_from_toml(file_path: str) -> Dict[str, str]:
     try:
-        config = toml.load(file_path)
+        config: ServiceDict = toml.load(file_path)
         return config.get("services", {})
     except FileNotFoundError:
         console.print("[red]Error:[/red] urls_config.toml not found")
@@ -25,7 +34,7 @@ def load_urls_from_toml(file_path):
         console.print(f"[red]Error loading configuration:[/red] {str(e)}")
         sys.exit(1)
 
-def check_url_status(url):
+def check_url_status(url: str) -> ServiceStatus:
     try:
         response = requests.get(url, timeout=5)
         if response.status_code == 200:
@@ -48,7 +57,7 @@ def check_url_status(url):
             "code": None
         }
 
-def get_status_color(status):
+def get_status_color(status: str) -> str:
     return {
         "ok": "green",
         "operational": "green",
@@ -56,7 +65,7 @@ def get_status_color(status):
         "unknown": "yellow"
     }.get(status.lower(), "yellow")
 
-def create_status_table(services, statuses):
+def create_status_table(services: Dict[str, str], statuses: Dict[str, ServiceStatus]) -> Table:
     table = Table(title="Service Status Dashboard", box=box.ROUNDED)
     
     table.add_column("Service", style="cyan", no_wrap=True)
@@ -79,7 +88,7 @@ def create_status_table(services, statuses):
     
     return table
 
-def create_layout(services, statuses):
+def create_layout(services: Dict[str, str], statuses: Dict[str, ServiceStatus]) -> Layout:
     layout = Layout()
     
     table = create_status_table(services, statuses)
@@ -99,12 +108,12 @@ def create_layout(services, statuses):
     
     return layout
 
-def main():
+def main() -> None:
     console.clear()
     console.print("[cyan]Loading service configuration...[/cyan]")
     
     services = load_urls_from_toml("urls_config.toml")
-    statuses = {}
+    statuses: Dict[str, ServiceStatus] = {}
     
     with Live(create_layout(services, statuses), refresh_per_second=1) as live:
         while True:
