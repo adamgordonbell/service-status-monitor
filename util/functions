@@ -20,7 +20,7 @@ docker() {
     uv run python ./scripts/container.py
 }
 
-status() { # Show service status dashboard in terminal
+cli() { # Show service status dashboard in terminal
     uv run python scripts/service_status_cli.py
 }
 
