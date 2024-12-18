@@ -49,6 +49,10 @@ INIT_LOCATION="$0"
     fi
 }
 
+,build_docker() { # Build the Docker image
+    docker build -t app-server -f infra/dockerfile .
+}
+
 ,run_docker() { # Run the Flask app in Docker
     docker run -d -p 3000:3000 app-server
 }
