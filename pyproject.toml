@@ -15,6 +15,9 @@ dependencies = [
     "scapy>=2.5",
     "setuptools",
     "dagger-io>=0.15.1",
+    "pytest>=8.3.4",
+    "pytest-cov>=6.0.0",
+    "rich>=13.9.4",
 ]
 
 [build-system]
@@ -23,5 +26,5 @@ build-backend = "setuptools.build_meta"
 
 [tool.pytest.ini_options]
 minversion = "7.0"
-addopts = "--cov=app --cov-report=term-missing"
+addopts = "--cov=scripts --cov-report=term-missing"
 testpaths = ["tests"]

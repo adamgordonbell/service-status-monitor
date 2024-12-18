@@ -20,7 +20,7 @@ async def main():
         flask_container = (
             python_container
             .with_exposed_port(5000)  # Expose Flask's default port
-            .with_exec(["python", "App.py"])  # Run the Flask app
+            .with_exec(["python", "scripts/flask.py"])  # Run the Flask app with updated path
         )
 
         # Step 3: Publish the container image

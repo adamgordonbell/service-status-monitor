@@ -1,6 +1,6 @@
 import pytest
 import toml
-from app import load_urls_from_toml
+from scripts.app_server import load_urls_from_toml  # Updated import path
 
 def test_load_urls_from_toml(tmp_path):
     # Create a temporary TOML file

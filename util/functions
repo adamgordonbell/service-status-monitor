@@ -9,9 +9,25 @@ INIT_LOCATION="$0"
 ## External
 
 run() { # Feedback
-   sudo uv run App.py
+   sudo uv run scripts/app_server.py
+}
+
+run_no_sniff() { # Run without packet sniffing (no sudo required)
+   uv run python scripts/app_server.py --no-sniff
 }
 
 docker() {
-    uv run python ./scripts/main.py
+    uv run python ./scripts/container.py
+}
+
+status() { # Show service status dashboard in terminal
+    uv run python scripts/service_status_cli.py
+}
+
+test() {
+    uv run python -m pytest tests/
+}
+
+kill_port() {
+    lsof -ti:5000 | xargs kill -9 2>/dev/null || echo "No process running on port 5000"
 }
