@@ -35,3 +35,12 @@ kill_port() {
 pulumi_up() { # Deploy infrastructure using Pulumi
     cd infra && uv run pulumi up && cd ..
 }
+
+check_api() { # Check the API status endpoint
+    API_URL=$(cd infra && uv run pulumi stack output api_url)
+    if [ -n "$API_URL" ]; then
+        curl "${API_URL}/default/status"
+    else
+        echo "Error: Could not get API URL from Pulumi outputs"
+    fi
+}

@@ -1,14 +1,51 @@
 import pulumi
 import pulumi_aws as aws
+import json
+import os
+import shutil
+import subprocess
 
-# Define the custom domain name
-custom_domain_name = "insertdomainname.com"
+print("here we are")
 
-# ACM Certificate for the custom domain
-acm_cert = aws.acm.Certificate("custom-domain-cert",
-    domain_name=custom_domain_name,
-    validation_method="DNS"
-)
+user_input = input("Enter your name: ")
+print(f"Hello {user_input}!")
+
+# Ensure the deployment directory exists and is clean
+if os.path.exists("deployment"):
+    shutil.rmtree("deployment")
+os.makedirs("deployment")
+
+# Copy the app server file
+shutil.copy("../scripts/app_server.py", "deployment/app.py")
+
+# Create the Lambda handler file
+with open("deployment/lambda_handler.py", "w") as f:
+    f.write('''
+import json
+from app import app
+from awsgi import wsgi
+
+def handler(event, context):
+    return wsgi.response(app, event, context)
+''')
+
+# Create requirements.txt for Lambda
+with open("deployment/requirements.txt", "w") as f:
+    f.write('''flask==2.3.3
+aws-wsgi==0.2.7''')
+
+# Install dependencies
+subprocess.run([
+    "pip",
+    "install",
+    "-r", "deployment/requirements.txt",
+    "-t", "deployment/"
+], check=True)
+
+# Create the Lambda asset
+asset = pulumi.AssetArchive({
+    ".": pulumi.FileArchive("./deployment")
+})
 
 # Create an API Gateway
 api_gateway = aws.apigatewayv2.Api("custom-api",
@@ -17,17 +54,39 @@ api_gateway = aws.apigatewayv2.Api("custom-api",
     route_selection_expression="$request.method $request.path"
 )
 
-# Create a Lambda function from a container image
+# Create IAM role for Lambda
+lambda_role = aws.iam.Role("lambda-role",
+    assume_role_policy=json.dumps({
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Action": "sts:AssumeRole",
+            "Principal": {
+                "Service": "lambda.amazonaws.com"
+            },
+            "Effect": "Allow",
+            "Sid": ""
+        }]
+    })
+)
+
+# Attach basic Lambda execution policy
+lambda_role_policy = aws.iam.RolePolicyAttachment("lambda-role-policy",
+    role=lambda_role.name,
+    policy_arn="arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+)
+
+# Create a Lambda function
 lambda_function = aws.lambda_.Function("custom-lambda",
     name="custom-lambda",
-    image_uri="459018586415.dkr.ecr.us-east-1.amazonaws.com/lambda-api:latest",
-    package_type="Image",
-    memory_size=512,
+    runtime="python3.9",
+    handler="lambda_handler.handler",
+    role=lambda_role.arn,  # Use the newly created role
+    code=asset,
     timeout=30,
-    role="arn:aws:iam::459018586415:role/service-role/lambda-api-role",
+    memory_size=512,
     environment={
         "variables": {
-            "EXAMPLE_ENV_VAR": "value"
+            "FLASK_ENV": "production"
         }
     }
 )
@@ -48,27 +107,18 @@ api_route = aws.apigatewayv2.Route("api-route",
     target=api_integration.id.apply(lambda id: f"integrations/{id}")
 )
 
+# Create a default route for the root path
+root_route = aws.apigatewayv2.Route("root-route",
+    api_id=api_gateway.id,
+    route_key="ANY /",
+    target=api_integration.id.apply(lambda id: f"integrations/{id}")
+)
+
 # Create a stage for the API
 api_stage = aws.apigatewayv2.Stage("api-stage",
     api_id=api_gateway.id,
     name="default",
     auto_deploy=True
-)
-
-# Custom domain for the API Gateway
-api_domain = aws.apigatewayv2.DomainName("api-domain",
-    domain_name=custom_domain_name,
-    domain_name_configuration={
-        "certificate_arn": acm_cert.arn,
-        "endpoint_type": "REGIONAL"
-    }
-)
-
-# Map the custom domain to the API
-api_mapping = aws.apigatewayv2.ApiMapping("api-mapping",
-    api_id=api_gateway.id,
-    domain_name=api_domain.id,
-    stage=api_stage.id
 )
 
 # Lambda permission for API Gateway
@@ -81,4 +131,3 @@ lambda_permission = aws.lambda_.Permission("lambda-permission",
 
 # Export the API URL
 pulumi.export("api_url", api_gateway.api_endpoint)
-pulumi.export("custom_domain_name", custom_domain_name)
