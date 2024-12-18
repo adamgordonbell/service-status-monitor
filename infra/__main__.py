@@ -19,7 +19,7 @@ api_gateway = aws.apigatewayv2.Api("custom-api",
 
 # Create a Lambda function from a container image
 lambda_function = aws.lambda_.Function("custom-lambda",
-    function_name="custom-lambda",
+    name="custom-lambda",
     image_uri="459018586415.dkr.ecr.us-east-1.amazonaws.com/lambda-api:latest",
     package_type="Image",
     memory_size=512,
@@ -45,7 +45,7 @@ api_integration = aws.apigatewayv2.Integration("api-lambda-integration",
 api_route = aws.apigatewayv2.Route("api-route",
     api_id=api_gateway.id,
     route_key="ANY /{proxy+}",
-    target=f"integrations/{api_integration.id}"
+    target=api_integration.id.apply(lambda id: f"integrations/{id}")
 )
 
 # Create a stage for the API
@@ -76,7 +76,7 @@ lambda_permission = aws.lambda_.Permission("lambda-permission",
     action="lambda:InvokeFunction",
     function=lambda_function.name,
     principal="apigateway.amazonaws.com",
-    source_arn=f"{api_gateway.execution_arn}/*/*"
+    source_arn=api_gateway.execution_arn.apply(lambda arn: f"{arn}/*/*")
 )
 
 # Export the API URL
