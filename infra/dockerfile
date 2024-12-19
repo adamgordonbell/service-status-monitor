@@ -1,38 +1,28 @@
-# Use AWS Lambda Python base image
-FROM public.ecr.aws/lambda/python:3.12
+FROM --platform=linux/amd64 public.ecr.aws/lambda/python:3.12
 
-# Set the working directory
+# Install libpcap for scapy and other required tools
+RUN dnf update -y && \
+    dnf install -y libpcap-devel && \
+    dnf clean all
+
+# Set up our app directory structure
 WORKDIR /app
-
-# Install libpcap for scapy
-RUN yum update -y && \
-    yum install -y libpcap-devel && \
-    yum clean all
-
-# Install uv
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Enable bytecode compilation and copy mode
-ENV UV_COMPILE_BYTECODE=1
-ENV UV_LINK_MODE=copy
-
-# First, install only dependencies
-COPY pyproject.toml uv.lock ./
-RUN uv pip install --system -r <(uv pip freeze)
-
-# Now add the rest of your source code
 COPY . .
 
-# Create templates directory if it doesn't exist
-RUN mkdir -p /app/templates
+# Install dependencies directly from pyproject.toml
+RUN pip install --no-cache-dir \
+    flask>=3.0.0 \
+    requests>=2.31.0 \
+    schedule>=1.2.1 \
+    toml>=0.10.2 \
+    scapy>=2.5.0 \
+    mangum>=0.17.0 \
+    asgiref>=3.7.2
 
 # Set environment variables
 ENV FLASK_APP=scripts/app_server.py
 ENV FLASK_ENV=production
-ENV FLASK_RUN_PORT=8080
-
-# Copy the handler script that will interface with Lambda
-COPY scripts/app_server.py ${LAMBDA_TASK_ROOT}
+ENV PYTHONPATH=/app
 
 # Set the CMD to your handler
-CMD ["app_server.lambda_handler"]
+CMD ["scripts.app_server.lambda_handler"]

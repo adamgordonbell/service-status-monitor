@@ -37,7 +37,7 @@ INIT_LOCATION="$0"
 }
 
 ,pulumi_up() { # Deploy infrastructure using Pulumi
-    cd infra && uv run pulumi up && cd ..
+    (cd infra && uv run pulumi up)
 }
 
 # Environment variables
@@ -52,7 +52,7 @@ export PULUMI_STACK_URL=$(cd infra && uv run pulumi stack output api_url 2>/dev/
 }
 
 ,build_docker() { # Build the Docker image
-    docker build -t app-server -f infra/dockerfile .
+    docker build -t app-server -f infra/Dockerfile .
 }
 
 ,run_docker() { # Run the Flask app in Docker

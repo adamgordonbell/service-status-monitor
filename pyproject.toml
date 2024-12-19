@@ -5,20 +5,21 @@ description = "A simple Flask app to check and display GitHub's status using Tai
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "flask>=2.0",
-    "requests>=2.26",
+    "flask>=3.0.0",
+    "requests>=2.31.0",
     "hypercorn>=0.14",
     "flask-rq2>=18.0",
-    "schedule>=1.2",
+    "schedule>=1.2.1",
     "redis>=5.0",
-    "toml>=0.10",
-    "scapy>=2.5",
+    "toml>=0.10.2",
+    "scapy>=2.5.0",
     "setuptools",
     "dagger-io>=0.15.1",
     "pytest>=8.3.4",
     "pytest-cov>=6.0.0",
     "rich>=13.9.4",
     "mangum>=0.17.0",
+    "asgiref>=3.7.2",
 ]
 
 [tool.setuptools]

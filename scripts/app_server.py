@@ -11,6 +11,7 @@ import argparse
 from typing import Dict, Any, Optional, TypedDict, NoReturn, Union
 import json
 from mangum import Mangum
+from asgiref.wsgi import WsgiToAsgi
 
 class ServiceStatus(TypedDict):
     status: str
@@ -31,7 +32,13 @@ logging.basicConfig(
 )
 
 # Flask App
-app = Flask(__name__, template_folder='../templates')  # Updated template folder path
+app = Flask(__name__, template_folder='../templates')  # Back to using relative path from scripts directory
+
+# Convert Flask app to ASGI
+asgi_app = WsgiToAsgi(app)
+
+# Create the Lambda handler
+handler = Mangum(asgi_app, lifespan="off")
 
 app.logger.setLevel(logging.DEBUG)
 
@@ -53,13 +60,17 @@ def initialize_urls() -> None:
             app.logger.debug("Loading URLs from urls_config.toml")
             urls = load_urls_from_toml("urls_config.toml")
             app.logger.debug(f"Loaded URLs: {urls}")
-            statuses = {url: {"status": "unknown", "description": "Checking..."} for url in urls.values()}
         except FileNotFoundError:
-            app.logger.error("urls_config.toml not found in current directory")
-            raise
+            app.logger.warning("urls_config.toml not found, using default URLs")
+            urls = {
+                "github": "https://www.githubstatus.com/api/v2/status.json",
+                "aws": "https://status.aws.amazon.com/healthcheck",
+            }
         except Exception as e:
             app.logger.error(f"Error loading URLs: {str(e)}")
-            raise
+            urls = {}
+        
+        statuses = {url: {"status": "unknown", "description": "Checking..."} for url in urls.values()}
 
 # Function to Check URL Status
 def check_url_status(url: str) -> None:
@@ -94,48 +105,66 @@ def run_scheduler() -> NoReturn:
 
 @app.before_request
 def log_request_info() -> None:
-    app.logger.debug(f"Request received: {request.method} {request.url}")
-    app.logger.debug(f"Headers: {request.headers}")
+    app.logger.info(f"Received {request.method} request to path: {request.path}")
+    app.logger.debug(f"Full URL: {request.url}")
+    app.logger.debug(f"Headers: {dict(request.headers)}")
+    app.logger.debug(f"Query Parameters: {dict(request.args)}")
     if request.data:
-        app.logger.debug(f"Body: {request.data.decode('utf-8')}")
+        app.logger.debug(f"Request Body: {request.data.decode('utf-8')}")
 
 @app.after_request
 def log_response_info(response: Response) -> Response:
-    app.logger.debug(f"Response: {response.status} for {request.method} {request.url}")
+    app.logger.info(f"Responding to {request.method} {request.path} with status {response.status_code}")
+    app.logger.debug(f"Response Headers: {dict(response.headers)}")
     return response
-
-# Schedule URL Checks
-def schedule_url_checks() -> None:
-    app.logger.debug("Scheduling URL checks")
-    for url in urls.values():
-        app.logger.debug(f"Setting up schedule for {url}")
-        schedule.every(30).seconds.do(lambda u=url: check_url_status(u))
 
 # Flask Routes
 @app.route("/")
 def index() -> str:
-    logging.info("index")
+    app.logger.info("Processing request to index /")
+    
+    # Debug: List contents of template directory
+    import os
+    template_dir = 'templates'
+    app.logger.info(f"Looking for templates in: {template_dir}")
+    if os.path.exists(template_dir):
+        app.logger.info(f"Template directory contents: {os.listdir(template_dir)}")
+    else:
+        app.logger.error(f"Template directory {template_dir} does not exist!")
+        
+    # Also check current directory
+    app.logger.info(f"Current directory: {os.getcwd()}")
+    app.logger.info(f"Directory contents: {os.listdir('.')}")
+    
     return render_template("index.html")
 
 @app.route("/status")
 def status() -> Response:
+    app.logger.info("Processing request to /status")
     return jsonify(statuses)
 
 @app.route("/packet-stats")
 def packet_stats_route() -> Response:
+    app.logger.info("Processing request to /packet-stats")
     return jsonify(packet_stats)
 
-# Create the Lambda handler
-handler = Mangum(app, lifespan="off")
-
+# AWS Lambda handler function
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
-    """AWS Lambda handler function"""
+    """
+    AWS Lambda handler function that processes API Gateway events
+    """
     try:
-        # Handle the API Gateway event with Mangum
+        app.logger.debug(f"Lambda event: {json.dumps(event)}")
+        
+        # Initialize URLs if needed
+        initialize_urls()
+        
+        # Handle the request using Mangum
         response = handler(event, context)
+        app.logger.debug(f"Response: {response}")
         return response
     except Exception as e:
-        logging.error(f"Error in lambda_handler: {str(e)}")
+        logging.error(f"Error in lambda_handler: {str(e)}", exc_info=True)
         return {
             "statusCode": 500,
             "body": json.dumps({"error": str(e)}),

@@ -44,7 +44,8 @@ repository = aws.ecr.Repository("app-server-repo",
 image = awsx.ecr.Image("app-server-image",
     repository_url=repository.repository_url,
     context="..",  # Go up one level to project root
-    dockerfile="Dockerfile"  # Path relative to context
+    dockerfile="Dockerfile",  # Path relative to infra directory
+    platform="linux/amd64"  # Specify the target platform
 )
 
 # Create a Lambda function
@@ -74,21 +75,28 @@ api_integration = aws.apigatewayv2.Integration("api-lambda-integration",
 # Define a route for the API
 api_route = aws.apigatewayv2.Route("api-route",
     api_id=api_gateway.id,
-    route_key="ANY /{proxy+}",
+    route_key="GET /status",  
+    target=api_integration.id.apply(lambda id: f"integrations/{id}")
+)
+
+# Create a route for packet stats
+packet_stats_route = aws.apigatewayv2.Route("packet-stats-route",
+    api_id=api_gateway.id,
+    route_key="GET /packet-stats",  
     target=api_integration.id.apply(lambda id: f"integrations/{id}")
 )
 
 # Create a default route for the root path
 root_route = aws.apigatewayv2.Route("root-route",
     api_id=api_gateway.id,
-    route_key="ANY /",
+    route_key="GET /",  
     target=api_integration.id.apply(lambda id: f"integrations/{id}")
 )
 
-# Create a stage for the API
+# Create a stage for the API without the stage name in the URL
 api_stage = aws.apigatewayv2.Stage("api-stage",
     api_id=api_gateway.id,
-    name="default",
+    name="$default",  
     auto_deploy=True
 )
 
