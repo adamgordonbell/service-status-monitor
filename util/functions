@@ -45,7 +45,7 @@ export PULUMI_STACK_URL=$(cd infra && uv run pulumi stack output api_url 2>/dev/
 
 ,run_check_api() { # Check the API status endpoint
     if [ -n "$PULUMI_STACK_URL" ]; then
-        curl "${PULUMI_STACK_URL}/default/status"
+        curl "${PULUMI_STACK_URL}/"
     else
         echo "Error: Could not get API URL from Pulumi outputs"
     fi

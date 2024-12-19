@@ -33,4 +33,6 @@ The project includes a set of convenient helper scripts in the `util/functions` 
 
 To use these helpers, source the functions file from the repository root and run the desired command.
 
-This infrastructure setup demonstrates modern DevOps practices including infrastructure as code, containerization, and automated testing, all implemented in Python for consistency and maintainability.
+The idea is to demonstrate modern DevOps practices including infrastructure as code, containerization, and automated testing, all implemented in Python, in a small amount of code.
+
+The Dockerfile is the one exception, I still need to port it to Dagger.
