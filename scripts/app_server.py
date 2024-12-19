@@ -32,7 +32,7 @@ logging.basicConfig(
 )
 
 # Flask App
-app = Flask(__name__, template_folder='../templates')  # Back to using relative path from scripts directory
+app = Flask(__name__, template_folder='../templates') 
 
 # Convert Flask app to ASGI
 asgi_app = WsgiToAsgi(app)

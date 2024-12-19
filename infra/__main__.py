@@ -43,9 +43,9 @@ repository = aws.ecr.Repository("app-server-repo",
 # Build and push the Docker image to ECR
 image = awsx.ecr.Image("app-server-image",
     repository_url=repository.repository_url,
-    context="..",  # Go up one level to project root
-    dockerfile="Dockerfile",  # Path relative to infra directory
-    platform="linux/amd64"  # Specify the target platform
+    context="..",  
+    dockerfile="Dockerfile",
+    platform="linux/amd64"
 )
 
 # Create a Lambda function
