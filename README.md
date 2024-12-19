@@ -20,16 +20,14 @@ This project serves as a little demonstration of DevOps practices using Python. 
 
 ### Helper Scripts
 
-The project includes a set of convenient helper scripts in the `util/functions` file. These scripts simplify common development and deployment tasks. Some key helpers include:
+The project includes a set of convenient helper scripts in the `util/functions` file. These include:
 
 - `,run_app_server`: Start the Flask application server with sudo privileges
 - `,run_no_sniff`: Run the app without packet sniffing (no sudo required)
-- `,run_cli`: Launch the service status dashboard in terminal
+- `,run_cli`: Launch the CLI dashboard
 - `,run_tests`: Execute the test suite
 - `,pulumi_up`: Deploy infrastructure changes using Pulumi
-- `,check_port`: Monitor what's running on port 3000
-- `,run_check_api`: Test the API status endpoint
-- `,kill_port`: Terminate any process running on port 3000
+- `,run_check_api`: Test the lambda endpoint
 
 To use these helpers, source the functions file from the repository root and run the desired command.
 

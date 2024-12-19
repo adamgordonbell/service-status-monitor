@@ -2,7 +2,6 @@
 # shellcheck disable=SC2207 # Arrays are a pain in bash 3
 
 echo "functions assume they are run from repo root"
-echo "run \"list\" for a list of helpers"
 
 INIT_LOCATION="$0"
 
