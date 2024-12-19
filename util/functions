@@ -40,10 +40,12 @@ INIT_LOCATION="$0"
     cd infra && uv run pulumi up && cd ..
 }
 
+# Environment variables
+export PULUMI_STACK_URL=$(cd infra && uv run pulumi stack output api_url 2>/dev/null || echo "")
+
 ,run_check_api() { # Check the API status endpoint
-    API_URL=$(cd infra && uv run pulumi stack output api_url)
-    if [ -n "$API_URL" ]; then
-        curl "${API_URL}/default/status"
+    if [ -n "$PULUMI_STACK_URL" ]; then
+        curl "${PULUMI_STACK_URL}/default/status"
     else
         echo "Error: Could not get API URL from Pulumi outputs"
     fi
@@ -55,4 +57,8 @@ INIT_LOCATION="$0"
 
 ,run_docker() { # Run the Flask app in Docker
     docker run -d -p 3000:3000 app-server
+}
+
+,run_lambda_logs() { # View recent Lambda logs
+    aws logs tail "/aws/lambda/custom-lambda" --since "${1:-5m}" --follow
 }

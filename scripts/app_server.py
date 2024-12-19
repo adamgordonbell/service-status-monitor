@@ -8,7 +8,9 @@ from scapy.all import sniff
 from scapy.packet import Packet
 import logging
 import argparse
-from typing import Dict, Any, Optional, TypedDict, NoReturn
+from typing import Dict, Any, Optional, TypedDict, NoReturn, Union
+import json
+from mangum import Mangum
 
 class ServiceStatus(TypedDict):
     status: str
@@ -122,6 +124,25 @@ def status() -> Response:
 @app.route("/packet-stats")
 def packet_stats_route() -> Response:
     return jsonify(packet_stats)
+
+# Create the Lambda handler
+handler = Mangum(app, lifespan="off")
+
+def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+    """AWS Lambda handler function"""
+    try:
+        # Handle the API Gateway event with Mangum
+        response = handler(event, context)
+        return response
+    except Exception as e:
+        logging.error(f"Error in lambda_handler: {str(e)}")
+        return {
+            "statusCode": 500,
+            "body": json.dumps({"error": str(e)}),
+            "headers": {
+                "Content-Type": "application/json"
+            }
+        }
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
