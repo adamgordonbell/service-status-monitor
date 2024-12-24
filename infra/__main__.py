@@ -72,24 +72,10 @@ api_integration = aws.apigatewayv2.Integration("api-lambda-integration",
     payload_format_version="2.0"
 )
 
-# Define a route for the API
-api_route = aws.apigatewayv2.Route("api-route",
+# Create a catch-all route for all paths and methods
+catch_all_route = aws.apigatewayv2.Route("catch-all-route",
     api_id=api_gateway.id,
-    route_key="GET /status",  
-    target=api_integration.id.apply(lambda id: f"integrations/{id}")
-)
-
-# Create a route for packet stats
-packet_stats_route = aws.apigatewayv2.Route("packet-stats-route",
-    api_id=api_gateway.id,
-    route_key="GET /packet-stats",  
-    target=api_integration.id.apply(lambda id: f"integrations/{id}")
-)
-
-# Create a default route for the root path
-root_route = aws.apigatewayv2.Route("root-route",
-    api_id=api_gateway.id,
-    route_key="GET /",  
+    route_key="ANY /{proxy+}",  # This matches any HTTP method and path
     target=api_integration.id.apply(lambda id: f"integrations/{id}")
 )
 
