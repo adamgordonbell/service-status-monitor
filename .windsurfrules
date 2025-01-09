@@ -1,6 +1,0 @@
-Build system is uv ` uv run python scripts/service_status_cli.py`
-Test system is pytest  `uv run pytest tests/*`
-Install packages: `uv add <package_name>`
-Docs in /docs/*.md 
-Add helpful Terminal commands to util/functions
-`Brainstorm:` in user message means no code, lets just brainstorm and plan.

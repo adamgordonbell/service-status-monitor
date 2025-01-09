@@ -1,5 +1,0 @@
-flask>=2.0.0
-requests>=2.0.0
-schedule>=1.0.0
-toml>=0.10.0
-scapy>=2.4.0
