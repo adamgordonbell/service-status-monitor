@@ -80,24 +80,30 @@ api_integration = aws.apigatewayv2.Integration("api-lambda-integration",
     payload_format_version="2.0"
 )
 
-# Create routes for each endpoint
-root_route = aws.apigatewayv2.Route("root-route",
-    api_id=api_gateway.id,
-    route_key="GET /",
-    target=api_integration.id.apply(lambda id: f"integrations/{id}")
-)
+# Create routes for each environment
+environments = ["prod", "candidate", "stable"]
 
-status_route = aws.apigatewayv2.Route("status-route",
-    api_id=api_gateway.id,
-    route_key="GET /status",
-    target=api_integration.id.apply(lambda id: f"integrations/{id}")
-)
+for env in environments:
+    # Root route for environment
+    aws.apigatewayv2.Route(f"{env}-root-route",
+        api_id=api_gateway.id,
+        route_key=f"GET /{env}",
+        target=api_integration.id.apply(lambda id: f"integrations/{id}")
+    )
 
-packet_stats_route = aws.apigatewayv2.Route("packet-stats-route",
-    api_id=api_gateway.id,
-    route_key="GET /packet-stats",
-    target=api_integration.id.apply(lambda id: f"integrations/{id}")
-)
+    # Status route for environment
+    aws.apigatewayv2.Route(f"{env}-status-route",
+        api_id=api_gateway.id,
+        route_key=f"GET /{env}/status",
+        target=api_integration.id.apply(lambda id: f"integrations/{id}")
+    )
+
+    # Packet stats route for environment
+    aws.apigatewayv2.Route(f"{env}-packet-stats-route",
+        api_id=api_gateway.id,
+        route_key=f"GET /{env}/packet-stats",
+        target=api_integration.id.apply(lambda id: f"integrations/{id}")
+    )
 
 # Allow API Gateway to invoke Lambda
 lambda_permission = aws.lambda_.Permission("api-lambda-permission",
@@ -107,5 +113,7 @@ lambda_permission = aws.lambda_.Permission("api-lambda-permission",
     source_arn=api_gateway.execution_arn.apply(lambda arn: f"{arn}/*/*")
 )
 
-# Export the API URL
+# Export the API URLs for each environment
 pulumi.export("url", api_gateway.api_endpoint)
+for env in environments:
+    pulumi.export(f"{env}_url", pulumi.Output.concat(api_gateway.api_endpoint, f"/{env}"))

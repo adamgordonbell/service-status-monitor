@@ -12,7 +12,7 @@ from typing import Dict, Any, TypedDict, NoReturn
 import json
 from mangum import Mangum
 from asgiref.wsgi import WsgiToAsgi
-
+import os
 
 class ServiceStatus(TypedDict):
     status: str
@@ -36,7 +36,7 @@ logging.basicConfig(
 )
 
 # Flask App
-app = Flask(__name__, template_folder="../templates")
+app = Flask(__name__, template_folder=os.path.join(os.path.dirname(__file__), '..', 'templates'))
 
 # Convert Flask app to ASGI
 asgi_app = WsgiToAsgi(app)
@@ -144,6 +144,10 @@ def start_packet_sniffer() -> None:
     )  # Capture packets every 60 seconds
 
 
+def get_packet_stats() -> PacketStats:
+    return packet_stats
+
+
 # Scheduler Runner
 def run_scheduler() -> NoReturn:
     while True:
@@ -170,39 +174,39 @@ def log_response_info(response: Response) -> Response:
     return response
 
 
-# Flask Routes
-@app.route("/")
-def index() -> str:
-    app.logger.info("Processing request to index /")
+# Define environments
+ENVIRONMENTS = ["prod", "candidate", "stable"]
 
-    # Debug: List contents of template directory
-    import os
+@app.route('/<environment>/', methods=['GET'])
+def root(environment):
+    if environment not in ENVIRONMENTS:
+        return jsonify({"message": "Not Found"}), 404
+    try:
+        return render_template('index.html')
+    except Exception as e:
+        app.logger.error(f"Error rendering template: {str(e)}")
+        return jsonify({"message": "Internal server error"}), 500
 
-    template_dir = "templates"
-    app.logger.info(f"Looking for templates in: {template_dir}")
-    if os.path.exists(template_dir):
-        app.logger.info(f"Template directory contents: {os.listdir(template_dir)}")
-    else:
-        app.logger.error(f"Template directory {template_dir} does not exist!")
+@app.route('/<environment>/status', methods=['GET'])
+def status(environment):
+    if environment not in ENVIRONMENTS:
+        return jsonify({"message": "Not Found"}), 404
+    try:
+        return jsonify(statuses)
+    except Exception as e:
+        app.logger.error(f"Error getting status: {str(e)}")
+        return jsonify({"message": "Internal server error"}), 500
 
-    # Also check current directory
-    app.logger.info(f"Current directory: {os.getcwd()}")
-    app.logger.info(f"Directory contents: {os.listdir('.')}")
-
-    return render_template("index.html")
-
-
-@app.route("/status")
-def status() -> Response:
-    app.logger.info("Processing request to /status")
-    return jsonify(statuses)
-
-
-@app.route("/packet-stats")
-def packet_stats_route() -> Response:
-    app.logger.debug("Packet stats request received")
-    return jsonify(packet_stats)
-
+@app.route('/<environment>/packet-stats', methods=['GET'])
+def packet_stats_route(environment):
+    if environment not in ENVIRONMENTS:
+        return jsonify({"message": "Not Found"}), 404
+    try:
+        app.logger.debug("Getting packet stats")
+        return jsonify(get_packet_stats())
+    except Exception as e:
+        app.logger.error(f"Error getting packet stats: {str(e)}")
+        return jsonify({"message": "Internal server error"}), 500
 
 # AWS Lambda handler function
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -242,20 +246,30 @@ def schedule_url_checks():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--no-sniff", action="store_true", help="Disable packet sniffing"
+        "--port", type=int, default=3001, help="Port to run the server on"
+    )
+    parser.add_argument(
+        "--host", type=str, default="127.0.0.1", help="Host to run the server on"
+    )
+    parser.add_argument(
+        "--no-sniff", action="store_true", default=True, help="Disable packet sniffing"
     )
     args = parser.parse_args()
 
-    # Initialize URLs and schedule checks
+    # Initialize URLs and start background tasks
     initialize_urls()
     schedule_url_checks()
-    app.logger.info("Starting scheduler thread")
-    threading.Thread(target=run_scheduler, daemon=True).start()
 
+    # Start packet sniffer in a background thread if enabled
     if not args.no_sniff:
         app.logger.info("Starting packet sniffer thread")
-        threading.Thread(target=start_packet_sniffer, daemon=True).start()
+        sniffer_thread = threading.Thread(target=start_packet_sniffer, daemon=True)
+        sniffer_thread.start()
     else:
         app.logger.info("Packet sniffing disabled")
 
-    app.run(host="0.0.0.0", port=3000, debug=True)
+    # Start scheduler in a background thread
+    scheduler_thread = threading.Thread(target=run_scheduler, daemon=True)
+    scheduler_thread.start()
+
+    app.run(host=args.host, port=args.port, debug=True)

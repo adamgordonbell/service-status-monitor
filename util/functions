@@ -85,45 +85,55 @@ INIT_LOCATION="$0"
     sam local start-api --warm-containers LAZY --port 3001
 }
 
-,run_sam_local() { # Build container, start SAM, and test endpoints
+,run_sam_local() { # Run SAM locally
     echo "🧹 Cleaning up old processes..."
-    # Kill any process using port 3001
     lsof -ti:3001 | xargs kill -9 2>/dev/null || true
-    # Stop any running app-server containers
     docker ps | grep app-server | awk '{print $1}' | xargs docker stop 2>/dev/null || true
     
     echo "🏗️  Building Docker container..."
     ,build_docker
     
-    echo "🚀 Starting SAM local API..."
-    sam local start-api --warm-containers LAZY --port 3001 &
-    SAM_PID=$!
+    echo "🚀 Starting SAM..."
+    sam local start-api --port 3001 &
     
-    # Wait for SAM to start
     echo "⏳ Waiting for SAM to start..."
-    for i in $(seq 1 30); do
-        if curl -s http://localhost:3001 > /dev/null; then
-            echo -e "\n📝 Testing endpoints..."
-            ,test_sam_endpoints
-            echo -e "\n✨ SAM is running on port 3001. Press Ctrl+C to stop."
-            wait $SAM_PID
-            return
-        fi
-        sleep 1
-    done
+    sleep 5
     
-    echo "❌ SAM failed to start after 30 seconds"
-    kill $SAM_PID 2>/dev/null || true
-    return 1
+    echo "🧪 Testing endpoints..."
+    ,test_sam_endpoints
+    
+    echo -e "\n✅ SAM is running on http://127.0.0.1:3001"
+    echo "Use Ctrl+C to stop SAM when done"
 }
 
-,test_sam_endpoints() { # Test all endpoints using SAM local API
-    echo "Testing root endpoint (/)..."
-    curl -s "http://127.0.0.1:3001/"
-    echo -e "\n\nTesting status endpoint (/status)..."
-    curl -s "http://127.0.0.1:3001/status" | jq
-    echo -e "\n\nTesting packet stats endpoint (/packet-stats)..."
-    curl -s "http://127.0.0.1:3001/packet-stats" | jq
+,test_endpoints() { # Test endpoints for either SAM or production
+    local BASE_URL=$1
+    echo "🔍 Testing endpoints at $BASE_URL"
+    
+    for ENV in "prod" "candidate" "stable"; do
+        echo -e "\n📝 Testing $ENV environment:"
+        echo "Testing root endpoint (/$ENV/)..."
+        curl -s "$BASE_URL/$ENV/"
+        echo -e "\n\nTesting status endpoint (/$ENV/status)..."
+        curl -s "$BASE_URL/$ENV/status" | jq
+        echo -e "\n\nTesting packet stats endpoint (/$ENV/packet-stats)..."
+        curl -s "$BASE_URL/$ENV/packet-stats" | jq
+        echo -e "\n----------------------------------------"
+    done
+}
+
+,test_sam_endpoints() { # Test SAM endpoints locally
+    echo "🧪 Testing SAM endpoints locally..."
+    ,test_endpoints "http://127.0.0.1:3001"
+}
+
+,test_prod_endpoints() { # Test production endpoints
+    echo "🌎 Testing production endpoints..."
+    API_URL=$(cd infra && pulumi stack output url) || {
+        echo "❌ Failed to get API URL. Make sure you're in the right directory and Pulumi stack exists."
+        return 1
+    }
+    ,test_endpoints "$API_URL"
 }
 
 ,deploy() { # Deploy to AWS using Pulumi
@@ -135,20 +145,20 @@ INIT_LOCATION="$0"
     ,build_docker
     
     echo "🚀 Deploying with Pulumi..."
-    cd infra && pulumi up --yes
+    (cd infra && pulumi up --yes) || {
+        echo "❌ Deployment failed. Check if another deployment is in progress."
+        return 1
+    }
     
     echo -e "\n✨ Deployment complete. Testing the deployed endpoints..."
-    API_URL=$(cd infra && pulumi stack output url)
-    
-    echo "Testing root endpoint (/)..."
-    curl -s "$API_URL/"
-    echo -e "\n\nTesting status endpoint (/status)..."
-    curl -s "$API_URL/status" | jq
-    echo -e "\n\nTesting packet stats endpoint (/packet-stats)..."
-    curl -s "$API_URL/packet-stats" | jq
+    ,test_prod_endpoints
 }
 
-# Run code checks
+,run_sam() { # Run SAM local API
+    echo "Starting SAM local API..."
+    sam local start-api --warm-containers LAZY --port 3001
+}
+
 ,check_code() {
     echo "🔍 Running code checks..."
     
@@ -177,7 +187,6 @@ INIT_LOCATION="$0"
     fi
 }
 
-# Run code checks and fix auto-fixable issues
 ,fix_code() {
     echo "🔧 Fixing code issues..."
     
@@ -194,13 +203,11 @@ INIT_LOCATION="$0"
     ,check_code
 }
 
-# Run mypy type checking
 ,type_check() {
     echo "Running mypy type checking..."
     uv run mypy scripts/*.py --ignore-missing-imports
 }
 
-# Run end-to-end test locally
 ,test_e2e() {
     echo "🔄 Running end-to-end test..."
     
@@ -260,7 +267,6 @@ INIT_LOCATION="$0"
     return 0
 }
 
-# Run all tests and checks
 ,test_all() {
     echo "🚀 Running all tests and checks..."
     
@@ -293,7 +299,6 @@ INIT_LOCATION="$0"
     return 0
 }
 
-# Run all tests and auto-fix if possible
 ,test_all_fix() {
     echo "🚀 Running all tests with auto-fixing..."
     

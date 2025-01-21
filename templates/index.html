@@ -46,8 +46,12 @@
     </table>
     
     <script>
+        // Get the current environment from the URL path
+        const path = window.location.pathname;
+        const environment = path.split('/')[1]; // e.g., 'prod', 'candidate', 'stable'
+        
         async function updateStatus() {
-            const response = await fetch("/status");
+            const response = await fetch(`/${environment}/status`);
             const data = await response.json();
             const tbody = document.getElementById("status-table-body");
             tbody.innerHTML = "";
@@ -65,7 +69,7 @@
         }
 
         async function updatePacketStats() {
-            const response = await fetch("/packet-stats");
+            const response = await fetch(`/${environment}/packet-stats`);
             const data = await response.json();
             document.getElementById("total-packets").textContent = data.total_packets;
             document.getElementById("http-requests").textContent = data.http_requests;
