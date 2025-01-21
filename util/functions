@@ -5,7 +5,7 @@ echo "functions assume they are run from repo root"
 
 INIT_LOCATION="$0"
 
-,init() { # Initialize environment variables and display them
+,init_script() { # Initialize environment variables and display them
     echo "Initializing environment..."
     
     # Set up environment variables
@@ -17,21 +17,13 @@ INIT_LOCATION="$0"
 }
 
 # Initialize environment when sourcing this file
-,init
+,init_script
 
 ## External
 
 ,run_app_server() { # Feedback
-   sudo FLASK_RUN_PORT=3000 uv run scripts/app_server.py
+    FLASK_RUN_PORT=3000 uv run python scripts/app_server.py --no-sniff
 }
-
-,run_no_sniff() { # Run without packet sniffing (no sudo required)
-   FLASK_RUN_PORT=3000 uv run python scripts/app_server.py --no-sniff
-}
-
-# ,run_docker() {
-#     uv run python ./scripts/container.py
-# }
 
 ,run_cli() { # Show service status dashboard in terminal
     uv run python scripts/service_status_cli.py
@@ -50,12 +42,13 @@ INIT_LOCATION="$0"
 }
 
 ,pulumi_up() { # Deploy infrastructure using Pulumi
-    (cd infra && uv run pulumi up)
+    (cd infra && uv run pulumi up --yes)
 }
 
 ,run_check_api() { # Check the API status endpoint
     if [ -n "$PULUMI_STACK_URL" ]; then
-        curl "${PULUMI_STACK_URL}/"
+        echo "Checking API at ${PULUMI_STACK_URL}"
+        curl "${PULUMI_STACK_URL}/prod/status"
     else
         echo "Error: Could not get API URL from Pulumi outputs"
     fi
@@ -70,5 +63,167 @@ INIT_LOCATION="$0"
 }
 
 ,run_lambda_logs() { # View recent Lambda logs
+    # Clear the terminal and show only new logs
+    clear
+    echo "Watching new logs..."
     aws logs tail "/aws/lambda/custom-lambda" --since "${1:-5m}" --follow
+}
+
+# Run code checks
+,check_code() {
+    echo "🔍 Running code checks..."
+    
+    # Type checking
+    echo "\n📝 Running type checks..."
+    uv run mypy scripts/*.py --ignore-missing-imports
+    TYPE_CHECK_STATUS=$?
+    
+    # Linting
+    echo "\n🧹 Running linter..."
+    uv run ruff check scripts/
+    LINT_STATUS=$?
+    
+    # Format checking
+    echo "\n✨ Checking formatting..."
+    uv run black scripts/ --check
+    FORMAT_STATUS=$?
+    
+    # Report overall status
+    if [ $TYPE_CHECK_STATUS -eq 0 ] && [ $LINT_STATUS -eq 0 ] && [ $FORMAT_STATUS -eq 0 ]; then
+        echo "\n✅ All checks passed!"
+        return 0
+    else
+        echo "\n❌ Some checks failed."
+        return 1
+    fi
+}
+
+# Run code checks and fix auto-fixable issues
+,fix_code() {
+    echo "🔧 Fixing code issues..."
+    
+    # Auto-fix linting issues
+    echo "\n🧹 Running linter auto-fix..."
+    uv run ruff check scripts/ --fix
+    
+    # Format code
+    echo "\n✨ Formatting code..."
+    uv run black scripts/
+    
+    # Run final check
+    echo "\n🔍 Running final check..."
+    ,check_code
+}
+
+# Run mypy type checking
+,type_check() {
+    echo "Running mypy type checking..."
+    uv run mypy scripts/*.py --ignore-missing-imports
+}
+
+# Run end-to-end test locally
+,test_e2e() {
+    echo "🔄 Running end-to-end test..."
+    
+    # Kill any existing process on port 3000
+    echo "Cleaning up port 3000..."
+    ,kill_port
+    
+    # Start the server in background
+    echo "Starting server..."
+    ,run_app_server &
+    SERVER_PID=$!
+    
+    # Wait for server to start
+    echo "Waiting for server to start..."
+    for i in {1..10}; do
+        if curl -s http://localhost:3000/status >/dev/null; then
+            break
+        fi
+        if [ $i -eq 10 ]; then
+            echo "❌ Server failed to start"
+            kill $SERVER_PID
+            return 1
+        fi
+        sleep 1
+    done
+    
+    # Test endpoints
+    echo "\nTesting endpoints..."
+    
+    # Test status endpoint
+    echo "\n📊 Testing /status endpoint:"
+    STATUS_RESPONSE=$(curl -s http://localhost:3000/status)
+    if [ $? -eq 0 ] && [ -n "$STATUS_RESPONSE" ]; then
+        echo "✅ Status endpoint returned: $STATUS_RESPONSE"
+    else
+        echo "❌ Status endpoint failed"
+        kill $SERVER_PID
+        return 1
+    fi
+    
+    # Test packet stats endpoint
+    echo "\n📈 Testing /packet-stats endpoint:"
+    STATS_RESPONSE=$(curl -s http://localhost:3000/packet-stats)
+    if [ $? -eq 0 ] && [ -n "$STATS_RESPONSE" ]; then
+        echo "✅ Packet stats endpoint returned: $STATS_RESPONSE"
+    else
+        echo "❌ Packet stats endpoint failed"
+        kill $SERVER_PID
+        return 1
+    fi
+    
+    # Cleanup
+    echo "\nCleaning up..."
+    kill $SERVER_PID
+    
+    echo "\n✅ All tests passed!"
+    return 0
+}
+
+# Run all tests and checks
+,test_all() {
+    echo "🚀 Running all tests and checks..."
+    
+    # Step 1: Code Quality Checks
+    echo "\n📝 Step 1: Running code quality checks..."
+    if ! ,check_code; then
+        echo "\n❌ Code quality checks failed. Fix these issues first!"
+        return 1
+    fi
+    echo "✅ Code quality checks passed"
+    
+    # Step 2: Unit Tests
+    echo "\n🧪 Step 2: Running unit tests..."
+    if ! ,run_tests; then
+        echo "\n❌ Unit tests failed. Fix these issues first!"
+        return 1
+    fi
+    echo "✅ Unit tests passed"
+    
+    # Step 3: End-to-End Tests
+    echo "\n🔄 Step 3: Running end-to-end tests..."
+    if ! ,test_e2e; then
+        echo "\n❌ End-to-end tests failed!"
+        return 1
+    fi
+    echo "✅ End-to-end tests passed"
+    
+    # All tests passed
+    echo "\n🎉 All tests and checks passed! Ready to deploy."
+    return 0
+}
+
+# Run all tests and auto-fix if possible
+,test_all_fix() {
+    echo "🚀 Running all tests with auto-fixing..."
+    
+    # Step 1: Try to fix code quality issues
+    echo "\n🔧 Step 1: Fixing code quality issues..."
+    ,fix_code
+    
+    # Step 2: Run all tests
+    echo "\n📋 Step 2: Running all tests..."
+    ,test_all
+    return $?
 }
