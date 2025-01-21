@@ -41,7 +41,7 @@ app = Flask(__name__, template_folder="../templates")
 # Convert Flask app to ASGI
 asgi_app = WsgiToAsgi(app)
 
-# Create the Lambda handler with proper configuration
+# Create Mangum handler for AWS Lambda
 handler = Mangum(asgi_app, lifespan="off")
 
 
@@ -200,7 +200,7 @@ def status() -> Response:
 
 @app.route("/packet-stats")
 def packet_stats_route() -> Response:
-    app.logger.info("Processing request to /packet-stats")
+    app.logger.debug("Packet stats request received")
     return jsonify(packet_stats)
 
 
@@ -258,4 +258,4 @@ if __name__ == "__main__":
     else:
         app.logger.info("Packet sniffing disabled")
 
-    app.run(debug=True, host="0.0.0.0", port=3000)
+    app.run(host="0.0.0.0", port=3000, debug=True)

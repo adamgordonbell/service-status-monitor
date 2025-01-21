@@ -34,6 +34,7 @@ lambda_role_policy = aws.iam.RolePolicyAttachment("lambda-role-policy",
 
 # Create an ECR repository
 repository = aws.ecr.Repository("app-server-repo",
+    name="app-server-repo",
     force_delete=True,
     image_scanning_configuration=aws.ecr.RepositoryImageScanningConfigurationArgs(
         scan_on_push=True,

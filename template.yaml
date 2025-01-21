@@ -1,0 +1,36 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Resources:
+  ServiceStatusFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      PackageType: Image
+      ImageUri: app-server:latest
+      ImageConfig:
+        Command: ["scripts.app_server.lambda_handler"]
+      Timeout: 30
+      MemorySize: 256
+      Environment:
+        Variables:
+          FLASK_ENV: development
+      Events:
+        ApiRoot:
+          Type: Api
+          Properties:
+            Path: /
+            Method: GET
+        ApiStatus:
+          Type: Api
+          Properties:
+            Path: /status
+            Method: GET
+        ApiPacketStats:
+          Type: Api
+          Properties:
+            Path: /packet-stats
+            Method: GET
+    Metadata:
+      DockerTag: latest
+      DockerContext: .
+      Dockerfile: infra/Dockerfile

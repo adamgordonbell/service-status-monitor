@@ -69,6 +69,63 @@ INIT_LOCATION="$0"
     aws logs tail "/aws/lambda/custom-lambda" --since "${1:-5m}" --follow
 }
 
+,run_lambda_local() { # Run Lambda container locally
+    echo "Building Docker image..."
+    docker build -t app-server -f infra/Dockerfile .
+    
+    echo "Starting Lambda container..."
+    docker run -d -p 9000:8080 app-server
+    
+    echo "Container started! You can test endpoints with:"
+    echo "curl -XPOST \"http://localhost:9000/2015-03-31/functions/function/invocations\" -d '{\"resource\": \"/\", \"path\": \"/\", \"httpMethod\": \"GET\"}'"
+}
+
+,run_sam() { # Run SAM local API
+    echo "Starting SAM local API..."
+    sam local start-api --warm-containers LAZY --port 3001
+}
+
+,run_sam_local() { # Build container, start SAM, and test endpoints
+    echo "🧹 Cleaning up old processes..."
+    # Kill any process using port 3001
+    lsof -ti:3001 | xargs kill -9 2>/dev/null || true
+    # Stop any running app-server containers
+    docker ps | grep app-server | awk '{print $1}' | xargs docker stop 2>/dev/null || true
+    
+    echo "🏗️  Building Docker container..."
+    ,build_docker
+    
+    echo "🚀 Starting SAM local API..."
+    sam local start-api --warm-containers LAZY --port 3001 &
+    SAM_PID=$!
+    
+    # Wait for SAM to start
+    echo "⏳ Waiting for SAM to start..."
+    for i in $(seq 1 30); do
+        if curl -s http://localhost:3001 > /dev/null; then
+            echo -e "\n📝 Testing endpoints..."
+            ,test_sam_endpoints
+            echo -e "\n✨ SAM is running on port 3001. Press Ctrl+C to stop."
+            wait $SAM_PID
+            return
+        fi
+        sleep 1
+    done
+    
+    echo "❌ SAM failed to start after 30 seconds"
+    kill $SAM_PID 2>/dev/null || true
+    return 1
+}
+
+,test_sam_endpoints() { # Test all endpoints using SAM local API
+    echo "Testing root endpoint (/)..."
+    curl -s "http://127.0.0.1:3001/"
+    echo -e "\n\nTesting status endpoint (/status)..."
+    curl -s "http://127.0.0.1:3001/status" | jq
+    echo -e "\n\nTesting packet stats endpoint (/packet-stats)..."
+    curl -s "http://127.0.0.1:3001/packet-stats" | jq
+}
+
 # Run code checks
 ,check_code() {
     echo "🔍 Running code checks..."
