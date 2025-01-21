@@ -21,8 +21,10 @@ INIT_LOCATION="$0"
 
 ## External
 
-,run_app_server() { # Feedback
-    FLASK_RUN_PORT=3000 uv run python scripts/app_server.py --no-sniff
+,run_app_server() { # Run Flask app server locally
+    local use_prefix=${1:-false}
+    export USE_ENV_PREFIX=$use_prefix
+    FLASK_RUN_PORT=3000 uv run python scripts/app_server.py
 }
 
 ,run_cli() { # Show service status dashboard in terminal
@@ -35,6 +37,7 @@ INIT_LOCATION="$0"
 
 ,kill_port() {
     lsof -ti:3000 | xargs kill -9 2>/dev/null || echo "No process running on port 3000"
+    lsof -ti:3001 | xargs kill -9 2>/dev/null || echo "No process running on port 3000"
 }
 
 ,check_port() { # Check what's running on port 3000

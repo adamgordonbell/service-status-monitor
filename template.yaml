@@ -14,7 +14,13 @@ Resources:
       Environment:
         Variables:
           FLASK_ENV: development
+          USE_ENV_PREFIX: 'true'
       Events:
+        LocalProxy:
+          Type: Api
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
         ProdProxy:
           Type: Api
           Properties:
