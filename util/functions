@@ -9,7 +9,7 @@ INIT_LOCATION="$0"
     echo "Initializing environment..."
     
     # Set up environment variables
-    export PULUMI_STACK_URL=$(cd infra && uv run pulumi stack select dev2 >/dev/null 2>&1 && uv run pulumi stack output api_url 2>/dev/null || echo "")
+    export PULUMI_STACK_URL=$(cd infra && uv run pulumi stack select dev2 >/dev/null 2>&1 && uv run pulumi stack output url 2>/dev/null || echo "")
     
     # Display current environment
     echo "Environment variables:"
