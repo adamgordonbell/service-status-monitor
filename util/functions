@@ -301,3 +301,16 @@ INIT_LOCATION="$0"
     ,test_all
     return $?
 }
+
+,rebuild_container() {
+    echo "🛑 Stopping any running containers..."
+    docker ps | grep app-server | awk '{print $1}' | xargs docker stop 2>/dev/null || true
+    
+    echo "🗑️  Removing old image..."
+    docker rmi app-server:latest 2>/dev/null || true
+    
+    echo "🏗️  Building new image..."
+    docker build -t app-server:latest -f infra/Dockerfile .
+    
+    echo "✅ Container rebuilt. SAM will use the new image for the next request."
+}
