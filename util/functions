@@ -126,6 +126,28 @@ INIT_LOCATION="$0"
     curl -s "http://127.0.0.1:3001/packet-stats" | jq
 }
 
+,deploy() { # Deploy to AWS using Pulumi
+    echo "🧹 Cleaning up old processes..."
+    lsof -ti:3001 | xargs kill -9 2>/dev/null || true
+    docker ps | grep app-server | awk '{print $1}' | xargs docker stop 2>/dev/null || true
+    
+    echo "🏗️  Building Docker container..."
+    ,build_docker
+    
+    echo "🚀 Deploying with Pulumi..."
+    cd infra && pulumi up --yes
+    
+    echo -e "\n✨ Deployment complete. Testing the deployed endpoints..."
+    API_URL=$(cd infra && pulumi stack output url)
+    
+    echo "Testing root endpoint (/)..."
+    curl -s "$API_URL/"
+    echo -e "\n\nTesting status endpoint (/status)..."
+    curl -s "$API_URL/status" | jq
+    echo -e "\n\nTesting packet stats endpoint (/packet-stats)..."
+    curl -s "$API_URL/packet-stats" | jq
+}
+
 # Run code checks
 ,check_code() {
     echo "🔍 Running code checks..."

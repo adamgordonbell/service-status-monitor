@@ -80,40 +80,32 @@ api_integration = aws.apigatewayv2.Integration("api-lambda-integration",
     payload_format_version="2.0"
 )
 
-# Create routes for prod, candidate, and stable
-prod_route = aws.apigatewayv2.Route("prod-route",
+# Create routes for each endpoint
+root_route = aws.apigatewayv2.Route("root-route",
     api_id=api_gateway.id,
-    route_key="ANY /prod/{proxy+}",
+    route_key="GET /",
     target=api_integration.id.apply(lambda id: f"integrations/{id}")
 )
 
-candidate_route = aws.apigatewayv2.Route("candidate-route",
+status_route = aws.apigatewayv2.Route("status-route",
     api_id=api_gateway.id,
-    route_key="ANY /candidate/{proxy+}",
+    route_key="GET /status",
     target=api_integration.id.apply(lambda id: f"integrations/{id}")
 )
 
-stable_route = aws.apigatewayv2.Route("stable-route",
+packet_stats_route = aws.apigatewayv2.Route("packet-stats-route",
     api_id=api_gateway.id,
-    route_key="ANY /stable/{proxy+}",
+    route_key="GET /packet-stats",
     target=api_integration.id.apply(lambda id: f"integrations/{id}")
 )
 
-# Lambda permission for API Gateway
-lambda_permission = aws.lambda_.Permission("lambda-permission",
+# Allow API Gateway to invoke Lambda
+lambda_permission = aws.lambda_.Permission("api-lambda-permission",
     action="lambda:InvokeFunction",
     function=lambda_function.name,
     principal="apigateway.amazonaws.com",
     source_arn=api_gateway.execution_arn.apply(lambda arn: f"{arn}/*/*")
 )
 
-# Export the API URLs for each endpoint
-pulumi.export("api_url", api_gateway.api_endpoint)
-pulumi.export("prod_url", pulumi.Output.concat(api_gateway.api_endpoint, "/prod"))
-pulumi.export("candidate_url", pulumi.Output.concat(api_gateway.api_endpoint, "/candidate"))
-pulumi.export("stable_url", pulumi.Output.concat(api_gateway.api_endpoint, "/stable"))
-
-# Export initial version tracking (all same initially)
-pulumi.export("prod_version", "initial")
-pulumi.export("candidate_version", "initial")
-pulumi.export("stable_version", "initial")
+# Export the API URL
+pulumi.export("url", api_gateway.api_endpoint)
