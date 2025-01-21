@@ -15,51 +15,21 @@ Resources:
         Variables:
           FLASK_ENV: development
       Events:
-        ProdRoot:
+        ProdProxy:
           Type: Api
           Properties:
-            Path: /prod/
-            Method: GET
-        ProdStatus:
+            Path: /prod/{proxy+}
+            Method: ANY
+        CandidateProxy:
           Type: Api
           Properties:
-            Path: /prod/status
-            Method: GET
-        ProdPacketStats:
+            Path: /candidate/{proxy+}
+            Method: ANY
+        StableProxy:
           Type: Api
           Properties:
-            Path: /prod/packet-stats
-            Method: GET
-        CandidateRoot:
-          Type: Api
-          Properties:
-            Path: /candidate/
-            Method: GET
-        CandidateStatus:
-          Type: Api
-          Properties:
-            Path: /candidate/status
-            Method: GET
-        CandidatePacketStats:
-          Type: Api
-          Properties:
-            Path: /candidate/packet-stats
-            Method: GET
-        StableRoot:
-          Type: Api
-          Properties:
-            Path: /stable/
-            Method: GET
-        StableStatus:
-          Type: Api
-          Properties:
-            Path: /stable/status
-            Method: GET
-        StablePacketStats:
-          Type: Api
-          Properties:
-            Path: /stable/packet-stats
-            Method: GET
+            Path: /stable/{proxy+}
+            Method: ANY
     Metadata:
       DockerTag: latest
       DockerContext: .

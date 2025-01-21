@@ -86,24 +86,19 @@ INIT_LOCATION="$0"
 }
 
 ,run_sam_local() { # Run SAM locally
-    echo "🧹 Cleaning up old processes..."
-    lsof -ti:3001 | xargs kill -9 2>/dev/null || true
-    docker ps | grep app-server | awk '{print $1}' | xargs docker stop 2>/dev/null || true
-    
-    echo "🏗️  Building Docker container..."
-    ,build_docker
-    
-    echo "🚀 Starting SAM..."
-    sam local start-api --port 3001 &
-    
-    echo "⏳ Waiting for SAM to start..."
-    sleep 5
-    
-    echo "🧪 Testing endpoints..."
-    ,test_sam_endpoints
-    
-    echo -e "\n✅ SAM is running on http://127.0.0.1:3001"
-    echo "Use Ctrl+C to stop SAM when done"
+    # Build the Docker image if it doesn't exist
+    if [[ "$(docker images -q app-server:latest 2> /dev/null)" == "" ]]; then
+        echo "🏗️  Building Docker image..."
+        docker build -t app-server:latest -f infra/Dockerfile .
+    fi
+
+    # Run SAM local API with warm containers and debug mode
+    echo "🚀 Starting SAM local API..."
+    sam local start-api \
+        --warm-containers EAGER \
+        --debug \
+        --port 3001 \
+        --docker-network host
 }
 
 ,test_endpoints() { # Test endpoints for either SAM or production
@@ -152,11 +147,6 @@ INIT_LOCATION="$0"
     
     echo -e "\n✨ Deployment complete. Testing the deployed endpoints..."
     ,test_prod_endpoints
-}
-
-,run_sam() { # Run SAM local API
-    echo "Starting SAM local API..."
-    sam local start-api --warm-containers LAZY --port 3001
 }
 
 ,check_code() {
