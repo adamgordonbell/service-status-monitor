@@ -14,9 +14,8 @@ Resources:
       Environment:
         Variables:
           FLASK_ENV: development
-          USE_ENV_PREFIX: 'true'
       Events:
-        LocalProxy:
+        ApiProxy:
           Type: Api
           Properties:
             Path: /{proxy+}
