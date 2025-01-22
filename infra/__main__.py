@@ -84,24 +84,10 @@ api_integration = aws.apigatewayv2.Integration("api-lambda-integration",
 environments = ["prod", "candidate", "stable"]
 
 for env in environments:
-    # Root route for environment
-    aws.apigatewayv2.Route(f"{env}-root-route",
+    # Create proxy route for each environment
+    aws.apigatewayv2.Route(f"{env}-proxy-route",
         api_id=api_gateway.id,
-        route_key=f"GET /{env}",
-        target=api_integration.id.apply(lambda id: f"integrations/{id}")
-    )
-
-    # Status route for environment
-    aws.apigatewayv2.Route(f"{env}-status-route",
-        api_id=api_gateway.id,
-        route_key=f"GET /{env}/status",
-        target=api_integration.id.apply(lambda id: f"integrations/{id}")
-    )
-
-    # Packet stats route for environment
-    aws.apigatewayv2.Route(f"{env}-packet-stats-route",
-        api_id=api_gateway.id,
-        route_key=f"GET /{env}/packet-stats",
+        route_key=f"ANY /{env}/{{proxy+}}",
         target=api_integration.id.apply(lambda id: f"integrations/{id}")
     )
 
@@ -113,7 +99,7 @@ lambda_permission = aws.lambda_.Permission("api-lambda-permission",
     source_arn=api_gateway.execution_arn.apply(lambda arn: f"{arn}/*/*")
 )
 
-# Export the API URLs for each environment
+# Export the API Gateway URLs
 pulumi.export("url", api_gateway.api_endpoint)
 for env in environments:
     pulumi.export(f"{env}_url", pulumi.Output.concat(api_gateway.api_endpoint, f"/{env}"))
