@@ -20,6 +20,23 @@ class ServiceStatus(TypedDict):
 class ServiceDict(TypedDict):
     services: Dict[str, str]
 
+class PrefixStripper:
+    """WSGI middleware to strip '/prod' or '/candidate' or '/stable' from PATH_INFO."""
+    def __init__(self, app, valid_prefixes=("prod", "candidate", "stable")):
+        self.app = app
+        self.valid_prefixes = valid_prefixes
+
+    def __call__(self, environ, start_response):
+        path = environ.get('PATH_INFO', '')
+        # Check if path starts with e.g. /prod
+        for prefix in self.valid_prefixes:
+            candidate = f"/{prefix}"
+            if path.startswith(candidate):
+                # Remove the prefix from PATH_INFO
+                environ['PATH_INFO'] = path[len(candidate):] or '/'
+                break
+        return self.app(environ, start_response)
+
 # Create Flask app
 app = Flask(__name__, template_folder=os.path.join(os.path.dirname(__file__), '..', 'templates'))
 
@@ -31,13 +48,10 @@ logging.basicConfig(
 
 app.logger.setLevel(logging.DEBUG)
 
-# Define environments
-ENVIRONMENTS = ["prod", "candidate", "stable"]
+# Add prefix stripping middleware
+app.wsgi_app = PrefixStripper(app.wsgi_app)
 
 @app.route('/', methods=['GET'])
-@app.route('/prod/', methods=['GET'])
-@app.route('/candidate/', methods=['GET'])
-@app.route('/stable/', methods=['GET'])
 def root():
     try:
         return render_template('index.html')
@@ -46,9 +60,6 @@ def root():
         return jsonify({"message": "Internal server error"}), 500
 
 @app.route('/status', methods=['GET'])
-@app.route('/prod/status', methods=['GET'])
-@app.route('/candidate/status', methods=['GET'])
-@app.route('/stable/status', methods=['GET'])
 def status():
     try:
         app.logger.debug(f"Status endpoint called, returning: {statuses}")
