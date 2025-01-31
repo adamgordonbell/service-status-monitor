@@ -317,32 +317,3 @@ INIT_LOCATION="$0"
     
     echo "✅ Container rebuilt. SAM will use the new image for the next request."
 }
-
-,build_docker_local() { # Build the Docker image for local development
-    docker build -t app-server-local -f infra/Dockerfile --build-arg RUN_MODE=local .
-}
-
-,run_docker_local() { # Run the Flask app in Docker locally
-    docker run -d -p 3000:3000 -e RUN_MODE=local app-server-local
-    echo "Server running at http://localhost:3000"
-    echo "Test with: curl http://localhost:3000/status"
-}
-
-,docker_stop() { # Stop all running containers for this app
-    docker ps -q --filter ancestor=app-server-local | xargs -r docker stop
-    docker ps -q --filter ancestor=app-server | xargs -r docker stop
-}
-
-,docker_logs() { # View logs for the running container
-    docker ps -q --filter ancestor=app-server-local | xargs -r docker logs -f
-}
-
-,build_simple() { # Build the simple Flask example
-    docker build -t simple-flask -f scripts/simple.Dockerfile .
-}
-
-,run_simple_local() { # Run the simple Flask example locally
-    docker run -d -p 3000:3000 -e RUN_MODE=local simple-flask
-    echo "Server running at http://localhost:3000"
-    echo "Test with: curl http://localhost:3000/hello"
-}

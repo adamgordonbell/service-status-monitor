@@ -13,6 +13,13 @@ from asgiref.wsgi import WsgiToAsgi
 import toml
 from werkzeug.wrappers import Response as WerkzeugResponse
 
+class ServiceStatus(TypedDict):
+    status: str
+    description: str
+
+class ServiceDict(TypedDict):
+    services: Dict[str, str]
+
 class PrefixStripper:
     """WSGI middleware to strip '/prod' or '/candidate' or '/stable' from PATH_INFO."""
     def __init__(self, app, valid_prefixes=("prod", "candidate", "stable")):
