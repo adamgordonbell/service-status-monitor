@@ -1,4 +1,4 @@
-FROM --platform=linux/amd64 public.ecr.aws/lambda/python:3.12
+FROM public.ecr.aws/lambda/python:3.12
 
 # Install libpcap for scapy and other required tools
 RUN dnf update -y && \
@@ -19,10 +19,14 @@ RUN pip install --no-cache-dir \
     mangum>=0.17.0 \
     asgiref>=3.7.2
 
+# Make entrypoint script executable
+RUN chmod +x scripts/docker_entrypoint.sh
+
 # Set environment variables
 ENV FLASK_APP=scripts/app_server.py
 ENV FLASK_ENV=production
 ENV PYTHONPATH=/app
+ENV RUN_MODE=lambda
 
-# Set the CMD to your handler
-CMD ["scripts.app_server.lambda_handler"]
+# Use our entrypoint script
+ENTRYPOINT ["/app/scripts/docker_entrypoint.sh"]
